@@ -1,0 +1,26 @@
+// STORE THE SUM OF RAM[32] TO RAM[48] IN RAM[1]
+@1
+M=0
+@32
+D=A
+@count
+M=D
+(LOOP)
+@48
+D=A
+@count
+D=D-M
+@END
+D;JLT
+@count
+A=M
+D=A
+@1
+M=M+D
+@count
+M=M+1
+@LOOP
+0;JMP
+(END)
+@END
+0;JMP
