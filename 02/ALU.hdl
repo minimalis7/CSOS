@@ -1,0 +1,86 @@
+// This file is part of www.nand2tetris.org
+// and the book "The Elements of Computing Systems"
+// by Nisan and Schocken, MIT Press.
+// File name: projects/02/ALU.hdl
+
+/**
+ * The ALU (Arithmetic Logic Unit).
+ * Computes one of the following functions:
+ * x+y, x-y, y-x, 0, 1, -1, x, y, -x, -y, !x, !y,
+ * x+1, y+1, x-1, y-1, x&y, x|y on two 16-bit inputs, 
+ * according to 6 input bits denoted zx,nx,zy,ny,f,no.
+ * In addition, the ALU computes two 1-bit outputs:
+ * if the ALU output == 0, zr is set to 1; otherwise zr is set to 0;
+ * if the ALU output < 0, ng is set to 1; otherwise ng is set to 0.
+ */
+
+// Implementation: the ALU logic manipulates the x and y inputs
+// and operates on the resulting values, as follows:
+// if (zx == 1) set x = 0        // 16-bit constant
+// if (nx == 1) set x = !x       // bitwise not
+// if (zy == 1) set y = 0        // 16-bit constant
+// if (ny == 1) set y = !y       // bitwise not
+// if (f == 1)  set out = x + y  // integer 2's complement addition
+// if (f == 0)  set out = x & y  // bitwise and
+// if (no == 1) set out = !out   // bitwise not
+// if (out == 0) set zr = 1
+// if (out < 0) set ng = 1
+
+CHIP ALU {
+    IN  
+        x[16], y[16],  // 16-bit inputs        
+        zx, // zero the x input?
+        nx, // negate the x input?
+        zy, // zero the y input?
+        ny, // negate the y input?
+        f,  // compute out = x + y (if 1) or x & y (if 0)
+        no; // negate the out output?
+
+    OUT 
+        out[16], // 16-bit output
+        zr, // 1 if (out == 0), 0 otherwise
+        ng; // 1 if (out < 0),  0 otherwise
+
+    PARTS:
+    // --- zx = 1 -> zero x
+    // If zx is set, the mux selects 16 bits of 0,
+    // otherwise it selects x
+    Mux16(a=x, b=false, sel=zx, out=outZX);
+
+    // --- nx = 1 -> negate x
+    // If nx is set, negate x with Not16. The mux
+    // selects between negated x or outZX
+    Not16(in=outZX, out=notX);
+    Mux16(a=outZX, b=notX, sel=nx, out=outNX);
+
+    // --- zy = 1 -> zero y
+    // analog to zero x
+    Mux16(a=y, b=false, sel=zy, out=outZY);
+
+    // --- ny = 1 -> negate y
+    // analog to negate x
+    Not16(in=outZY, out=notY);
+    Mux16(a=outZY, b=notY, sel=ny, out=outNY);
+
+    // --- f = 1 -> compute x & y (And)
+    And16(a=outNX, b=outNY, out=outAND);
+    // --- f = 0 -> compute x + y (Add)
+    Add16(a=outNX, b=outNY, out=outADD);
+    // Return the right output for f
+    Mux16(a=outAND, b=outADD, sel=f, out=outF);
+
+    // ---no = 1 -> negate the output
+    // If this bit is set, the output is negated bitwise
+    // -> final output
+    Not16(in=outF, out=outNO);
+    Mux16(a=outF, b=outNO, sel=no, out=outFinal);
+
+    // --- testing fpr zr / ng
+    Mux16(a=outFinal, b=false, sel=false, out=out);
+    // --- test if the output equals zero, return true if so
+    Or16Way(in=outFinal, out=outZR);
+    Not(in=outZR, out=zr);
+    // ---- test if the output is negative, return true if so
+    IsNeg(in=outFinal, out=ng);
+	
+}
